@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Apology Letter</title>
+    <style>
+        body {
+            background-color: #0d0d12;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffffff;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        canvas {
+            background: #12121c;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border-radius: 8px;
+        }
+
+        /* The Apology Letter Card */
+        .letter-card {
+            max-width: 360px;
+            background: #181824;
+            border: 2px solid #ff3366;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.2);
+            
+            /* Hidden initially for smooth fade-in */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1.5s ease, transform 1.5s ease;
+            pointer-events: none;
+        }
+
+        /* Active class added via JavaScript when pixels assemble */
+        .letter-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .letter-card h2 {
+            margin-top: 0;
+            color: #ff3366;
+            font-size: 1.2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .letter-card p {
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: #d1d1e0;
+            margin-bottom: 12px;
+        }
+
+        .letter-card .signature {
+            text-align: right;
+            font-weight: bold;
+            color: #ffcc00;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Pixel Canvas -->
+        <canvas id="pixelCanvas" width="400" height="320"></canvas>
+
+        <!-- Apology Letter -->
+        <div class="letter-card" id="apologyLetter">
+            <h2>I'm Really Sorry</h2>
+            <p>I know I messed up, and I truly regret how things went down. You mean a lot to me tho i bearly know you😅, and hurting you was the last thing I wanted to do if i knew that i was going to hurt you i wouldn't have even agreed.</p>
+            <p>I hope you can forgive me. Let's talk whenever you're ready.</p>
+            <div class="signature">— Yours, Sebastian </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        const letter = document.getElementById('apologyLetter');
+
+        const pixelSize = 6;
+        const cols = canvas.width / pixelSize;
+
+        const heartGrid = [
+            "  00000   00000  ",
+            " 0000000 0000000 ",
+            "00000000000000000",
+            "00000000000000000",
+            " 000000000000000 ",
+            "  0000000000000  ",
+            "   00000000000   ",
+            "    000000000    ",
+            "     0000000     ",
+            "      00000      ",
+            "       000       ",
+            "        0        "
+        ];
+
+        const sorryGrid = [
+            " 000  0000  000  0000   0      0  ",
+            "0     0  0  0  0 0  0    0.   0   ",
+            "0     0  0  0  0 0  0     0  0    ",
+            " 000  0  0  000  000       0.     ",
+            "    0 0  0  0 0  0 0      0       ",
+            "    0 0  0  0  0 0  0    0        ",
+            " 000  0000  0  0 0  0   0         "
+        ];
+
+        let targetPixels = [];
+
+        function setupTargets() {
+            const heartOffsetX = Math.floor((cols - heartGrid[0].length) / 2);
+            const heartOffsetY = 5;
+
+            for (let r = 0; r < heartGrid.length; r++) {
+                for (let c = 0; c < heartGrid[r].length; c++) {
+                    if (heartGrid[r][c] === '0') {
+                        let color = '#ff3366';
+                        if (r === 1 && (c === 2 || c === 3)) color = '#ff80a6';
+                        if (r >= 8) color = '#cc0033';
+
+                        targetPixels.push({
+                            x: (heartOffsetX + c) * pixelSize,
+                            y: (heartOffsetY + r) * pixelSize,
+                            color: color
+                        });
+                    }
+                }
+            }
+
+            const sorryOffsetX = Math.floor((cols - sorryGrid[0].length) / 2);
+            const sorryOffsetY = heartOffsetY + heartGrid.length + 3;
+
+            for (let r = 0; r < sorryGrid.length; r++) {
+                for (let c = 0; c < sorryGrid[r].length; c++) {
+                    if (sorryGrid[r][c] === '0') {
+                        targetPixels.push({
+                            x: (sorryOffsetX + c) * pixelSize,
+                            y: (sorryOffsetY + r) * pixelSize,
+                            color: '#ffcc00'
+                        });
+                    }
+                }
+            }
+        }
+
+        setupTargets();
+
+        let particles = targetPixels.map(target => {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                destX: target.x,
+                destY: target.y,
+                color: target.color,
+                speed: 0.03 + Math.random() * 0.04,
+                delay: Math.random() * 20
+            };
+        });
+
+        let frame = 0;
+        let letterRevealed = false;
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let totalDistanceRemaining = 0;
+
+            particles.forEach(p => {
+                if (frame > p.delay) {
+                    let dx = p.destX - p.x;
+                    let dy = p.destY - p.y;
+                    
+                    p.x += dx * p.speed;
+                    p.y += dy * p.speed;
+
+                    totalDistanceRemaining += Math.abs(dx) + Math.abs(dy);
+                } else {
+                    totalDistanceRemaining += 100;
+                }
+
+                ctx.fillStyle = p.color;
+                ctx.fillRect(Math.round(p.x), Math.round(p.y), pixelSize - 1, pixelSize - 1);
+            });
+
+            // Trigger the letter fade-in once pixels are almost completely assembled
+            if (totalDistanceRemaining < 10 && !letterRevealed) {
+                letterRevealed = true;
+                letter.classList.add('visible');
+            }
+
+            frame++;
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
